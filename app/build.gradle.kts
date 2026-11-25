@@ -8,7 +8,7 @@ android {
   namespace = "com.example.antigravity"
   compileSdk = 36
   defaultConfig {
-    applicationId = "com.google.antigravity.mobile"
+    applicationId = "com.personal.antigravity.mobile"
     minSdk = 24
     targetSdk = 34
     versionCode = 1
