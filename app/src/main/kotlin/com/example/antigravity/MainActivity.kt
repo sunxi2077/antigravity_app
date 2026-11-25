@@ -16,6 +16,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -31,7 +32,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -105,20 +108,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val isDark = isDarkMode()
-        val adaptiveBgColor = if (isDark) Color.parseColor("#0F172A") else Color.parseColor("#FFFFFF")
+        val adaptiveBgColor = getColor(R.color.splash_bg)
 
-        // Match the system bars to the Antigravity page background.
+        val pageBackground = Color.rgb(0x2B, 0x2B, 0x2D)
+        window.setBackgroundDrawable(ColorDrawable(pageBackground))
         @Suppress("DEPRECATION")
         run {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            val systemBarColor = Color.rgb(0x2B, 0x2B, 0x2D)
-            window.statusBarColor = systemBarColor
-            window.navigationBarColor = systemBarColor
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isStatusBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
+            }
         }
 
-        // Let adjustResize keep the WebView above the software keyboard.
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = false
@@ -129,7 +139,7 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(adaptiveBgColor)
+            setBackgroundColor(pageBackground)
             isFocusable = true
             isFocusableInTouchMode = true
         }
@@ -139,7 +149,7 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(adaptiveBgColor)
+            setBackgroundColor(pageBackground)
             isVerticalScrollBarEnabled = false
             isHorizontalScrollBarEnabled = false
             // Hardware acceleration
@@ -153,7 +163,18 @@ class MainActivity : ComponentActivity() {
         splashOverlay = overlay
         rootContainer.addView(overlay)
 
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { view, insets ->
+            // The combined inset uses the larger bottom inset when the keyboard is visible.
+            val safeArea = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout() or
+                    WindowInsetsCompat.Type.ime()
+            )
+            view.setPadding(safeArea.left, safeArea.top, safeArea.right, safeArea.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
         setContentView(rootContainer)
+        ViewCompat.requestApplyInsets(rootContainer)
 
         setupWebView()
 
