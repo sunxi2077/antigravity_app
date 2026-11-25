@@ -16,7 +16,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -32,6 +31,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -116,6 +116,13 @@ class MainActivity : ComponentActivity() {
             window.navigationBarColor = adaptiveBgColor
         }
 
+        // Let adjustResize keep the WebView above the software keyboard.
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !isDark
+            isAppearanceLightNavigationBars = !isDark
+        }
+
         rootContainer = FrameLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -146,11 +153,6 @@ class MainActivity : ComponentActivity() {
         rootContainer.addView(overlay)
 
         setContentView(rootContainer)
-
-        // Immersive fullscreen + adaptive system bar icons activation
-        window.decorView.post {
-            applyImmersiveFullScreen()
-        }
 
         setupWebView()
 
@@ -357,58 +359,6 @@ class MainActivity : ComponentActivity() {
             .start()
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            window.decorView.post {
-                applyImmersiveFullScreen()
-            }
-        }
-    }
-
-    private fun applyImmersiveFullScreen() {
-        try {
-            val isDark = isDarkMode()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                window.setDecorFitsSystemWindows(false)
-                window.insetsController?.let { controller ->
-                    val appearance = if (isDark) 0 else (
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                        )
-                    controller.setSystemBarsAppearance(
-                        appearance,
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-                    )
-                    controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                    controller.systemBarsBehavior =
-                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                var flags = (
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                    )
-                if (!isDark) {
-                    @Suppress("DEPRECATION")
-                    flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        @Suppress("DEPRECATION")
-                        flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-                    }
-                }
-                @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility = flags
-            }
-        } catch (_: Exception) {}
-    }
-
     private fun getSavedSessionUrl(): String? {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_SESSION_URL, null)?.takeIf { it.isNotBlank() }
@@ -528,7 +478,6 @@ class MainActivity : ComponentActivity() {
                 val chooserUrl = "https://accounts.google.com/AccountChooser?continue=https://antigravity.google.com/"
                 saveSessionUrl(DEFAULT_TEMPLATE_URL)
                 webView.loadUrl(chooserUrl)
-                applyImmersiveFullScreen()
             }
         }
         accountActions.addView(switchAccountBtn)
@@ -548,7 +497,6 @@ class MainActivity : ComponentActivity() {
                     runOnUiThread {
                         webView.clearCache(true)
                         webView.loadUrl("https://accounts.google.com/AccountChooser?continue=https://antigravity.google.com/")
-                        applyImmersiveFullScreen()
                     }
                 }
             }
@@ -571,7 +519,6 @@ class MainActivity : ComponentActivity() {
                 textSize = 14f
                 setOnClickListener {
                     dialog.dismiss()
-                    applyImmersiveFullScreen()
                 }
             }
             buttonRow.addView(cancelBtn)
@@ -598,17 +545,12 @@ class MainActivity : ComponentActivity() {
                 saveSessionUrl(url)
                 webView.loadUrl(url)
                 dialog.dismiss()
-                applyImmersiveFullScreen()
             }
         }
         buttonRow.addView(connectBtn)
         card.addView(buttonRow)
 
         dialog.setContentView(card)
-
-        dialog.setOnDismissListener {
-            applyImmersiveFullScreen()
-        }
 
         if (isFirstLaunch) {
             dialog.setOnCancelListener {
