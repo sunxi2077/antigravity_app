@@ -107,20 +107,21 @@ class MainActivity : ComponentActivity() {
         val isDark = isDarkMode()
         val adaptiveBgColor = if (isDark) Color.parseColor("#0F172A") else Color.parseColor("#FFFFFF")
 
-        // Adaptive status & navigation bar colors matching system light/dark mode
+        // Match the system bars to the Antigravity page background.
         @Suppress("DEPRECATION")
         run {
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.statusBarColor = adaptiveBgColor
-            window.navigationBarColor = adaptiveBgColor
+            val systemBarColor = Color.rgb(0x2B, 0x2B, 0x2D)
+            window.statusBarColor = systemBarColor
+            window.navigationBarColor = systemBarColor
         }
 
         // Let adjustResize keep the WebView above the software keyboard.
         WindowCompat.setDecorFitsSystemWindows(window, true)
         WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !isDark
-            isAppearanceLightNavigationBars = !isDark
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
 
         rootContainer = FrameLayout(this).apply {
